@@ -306,6 +306,11 @@ class ARKitController {
 
   final bool debug;
 
+  bool _recording = false;
+
+  /// 録画中であれば true。
+  bool get recording => _recording;
+
   static const _boolConverter = ValueNotifierConverter();
   static const _vector3Converter = Vector3Converter();
   static const _vector2Converter = Vector2Converter();
@@ -318,6 +323,21 @@ class ARKitController {
 
   void dispose() {
     _channel.invokeMethod<void>('dispose');
+  }
+
+  /// 画面録画を開始します（ARオブジェクトは含まれずカメラ映像のみ）。
+  Future<bool> startRecording() async {
+    final ok = await _channel.invokeMethod<bool>('startRecording');
+    _recording = ok ?? false;
+    return _recording;
+  }
+
+  /// 画面録画を停止し、保存先ファイルのフルパスを返します。
+  /// 保存先は端末の temporaryDirectory 直下です。
+  Future<String?> stopRecording() async {
+    final path = await _channel.invokeMethod<String>('stopRecording');
+    _recording = false;
+    return path;
   }
 
   Future<void> add(ARKitNode node, {String? parentNodeName}) {

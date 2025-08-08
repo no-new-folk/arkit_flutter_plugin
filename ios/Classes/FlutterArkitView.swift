@@ -1,5 +1,6 @@
 import ARKit
 import Foundation
+import AVFoundation
 
 class FlutterArkitView: NSObject, FlutterPlatformView {
     let sceneView: ARSCNView
@@ -7,6 +8,14 @@ class FlutterArkitView: NSObject, FlutterPlatformView {
 
     var forceTapOnCenter: Bool = false
     var configuration: ARConfiguration? = nil
+
+    // Recording state
+    var isRecording: Bool = false
+    var recordingWriter: AVAssetWriter? = nil
+    var recordingAdaptor: AVAssetWriterInputPixelBufferAdaptor? = nil
+    var recordingInput: AVAssetWriterInput? = nil
+    var recordingStartTimeSeconds: Double? = nil
+    var recordingOutputURL: URL? = nil
 
     init(withFrame frame: CGRect, viewIdentifier viewId: Int64, messenger msg: FlutterBinaryMessenger) {
         sceneView = ARSCNView(frame: frame)
@@ -20,7 +29,7 @@ class FlutterArkitView: NSObject, FlutterPlatformView {
 
     func view() -> UIView { return sceneView }
 
-    func onMethodCalled(_ call: FlutterMethodCall, _ result: FlutterResult) {
+    func onMethodCalled(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         let arguments = call.arguments as? [String: Any]
 
         if configuration == nil && call.method != "init" {
@@ -33,6 +42,10 @@ class FlutterArkitView: NSObject, FlutterPlatformView {
         case "init":
             initalize(arguments!, result)
             result(nil)
+        case "startRecording":
+            startRecording(result)
+        case "stopRecording":
+            stopRecording(result)
         case "addARKitNode":
             onAddNode(arguments!)
             result(nil)

@@ -62,6 +62,11 @@ extension FlutterArkitView: ARSCNViewDelegate {
     func renderer(_: SCNSceneRenderer, updateAtTime time: TimeInterval) {
         let params = ["time": NSNumber(floatLiteral: time)]
         sendToFlutter("updateAtTime", arguments: params)
+
+        // 録画が有効な場合はフレームを書き込み
+        if isRecording {
+            appendCurrentFrameToRecording(currentTime: time)
+        }
     }
 
     fileprivate func prepareParamsForAnchorEvent(_ node: SCNNode, _ anchor: ARAnchor) -> [String: Any] {
