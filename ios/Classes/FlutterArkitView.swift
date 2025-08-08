@@ -16,6 +16,8 @@ class FlutterArkitView: NSObject, FlutterPlatformView {
     var recordingInput: AVAssetWriterInput? = nil
     var recordingStartTimeSeconds: Double? = nil
     var recordingOutputURL: URL? = nil
+    var recordingTimescale: CMTimeScale = 600
+    var recordingFrameIndex: Int64 = 0
 
     init(withFrame frame: CGRect, viewIdentifier viewId: Int64, messenger msg: FlutterBinaryMessenger) {
         sceneView = ARSCNView(frame: frame)
