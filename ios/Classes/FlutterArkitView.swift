@@ -18,6 +18,8 @@ class FlutterArkitView: NSObject, FlutterPlatformView {
     var recordingOutputURL: URL? = nil
     var recordingTimescale: CMTimeScale = 600
     var recordingFrameIndex: Int64 = 0
+    var recordingOutputWidth: Int = 0
+    var recordingOutputHeight: Int = 0
 
     init(withFrame frame: CGRect, viewIdentifier viewId: Int64, messenger msg: FlutterBinaryMessenger) {
         sceneView = ARSCNView(frame: frame)
@@ -45,7 +47,7 @@ class FlutterArkitView: NSObject, FlutterPlatformView {
             initalize(arguments!, result)
             result(nil)
         case "startRecording":
-            startRecording(result)
+            startRecording(arguments, result)
         case "stopRecording":
             stopRecording(result)
         case "addARKitNode":

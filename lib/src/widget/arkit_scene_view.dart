@@ -326,8 +326,12 @@ class ARKitController {
   }
 
   /// 画面録画を開始します（ARオブジェクトは含まれずカメラ映像のみ）。
-  Future<bool> startRecording() async {
-    final ok = await _channel.invokeMethod<bool>('startRecording');
+  /// width/height を指定すると、その解像度でエンコードされます（未指定時はカメラ原寸）。
+  Future<bool> startRecording({int? width, int? height}) async {
+    final params = <String, dynamic>{};
+    if (width != null) params['width'] = width;
+    if (height != null) params['height'] = height;
+    final ok = await _channel.invokeMethod<bool>('startRecording', params);
     _recording = ok ?? false;
     return _recording;
   }

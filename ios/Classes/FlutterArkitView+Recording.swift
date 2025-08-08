@@ -2,7 +2,7 @@ import ARKit
 import AVFoundation
 
 extension FlutterArkitView {
-    func startRecording(_ result: @escaping FlutterResult) {
+    func startRecording(_ args: [String: Any]?, _ result: @escaping FlutterResult) {
         guard !isRecording else {
             // 既に録画中なら成功として返す（冪等）
             result(true)
@@ -29,8 +29,14 @@ extension FlutterArkitView {
         }
 
         let pixelBuffer = frame.capturedImage
-        let width = CVPixelBufferGetWidth(pixelBuffer)
-        let height = CVPixelBufferGetHeight(pixelBuffer)
+        let cameraWidth = CVPixelBufferGetWidth(pixelBuffer)
+        let cameraHeight = CVPixelBufferGetHeight(pixelBuffer)
+
+        // Dartからの指定サイズ（未指定時はカメラ原寸）
+        let targetWidth = (args?["width"] as? Int) ?? Int(cameraWidth)
+        let targetHeight = (args?["height"] as? Int) ?? Int(cameraHeight)
+        recordingOutputWidth = targetWidth
+        recordingOutputHeight = targetHeight
 
         do {
             let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
@@ -43,8 +49,8 @@ extension FlutterArkitView {
             ]
             let settings: [String: Any] = [
                 AVVideoCodecKey: AVVideoCodecType.h264,
-                AVVideoWidthKey: width,
-                AVVideoHeightKey: height,
+                AVVideoWidthKey: targetWidth,
+                AVVideoHeightKey: targetHeight,
                 AVVideoCompressionPropertiesKey: compressionProps,
             ]
             let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
@@ -52,8 +58,8 @@ extension FlutterArkitView {
 
             let sourcePixelBufferAttributes: [String: Any] = [
                 kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
-                kCVPixelBufferWidthKey as String: width,
-                kCVPixelBufferHeightKey as String: height,
+                kCVPixelBufferWidthKey as String: targetWidth,
+                kCVPixelBufferHeightKey as String: targetHeight,
                 kCVPixelBufferIOSurfacePropertiesKey as String: [:],
             ]
             let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: sourcePixelBufferAttributes)
@@ -157,17 +163,18 @@ extension FlutterArkitView {
         // ARコンテンツを含めない: capturedImage をそのままエンコード
         let pixelBuffer = frame.capturedImage
 
-        // タイムスタンプ: 録画開始からの相対時間（IETF推奨の timescale 600）
-        // 連番で安定した pts を与える（動画の可読性向上）
-        let frameDuration = CMTime(value: 1, timescale: recordingTimescale / 30) // 約30fps
+        // タイムスタンプ: 30fps相当の安定したPTS
+        let timescale = recordingTimescale
+        let step = max(Int32(timescale / 30), 1)
+        let frameDuration = CMTime(value: step, timescale: timescale)
         let frameTime = CMTimeMultiply(frameDuration, multiplier: Int32(recordingFrameIndex))
         recordingFrameIndex += 1
 
         // capturedImage は YpCbCr なので、RGB に変換が必要。
         // 簡易に CIContext で BGRA に変換した PixelBuffer を作成して投入する。
         var outputPixelBuffer: CVPixelBuffer?
-        let width = CVPixelBufferGetWidth(pixelBuffer)
-        let height = CVPixelBufferGetHeight(pixelBuffer)
+        let width = recordingOutputWidth > 0 ? recordingOutputWidth : CVPixelBufferGetWidth(pixelBuffer)
+        let height = recordingOutputHeight > 0 ? recordingOutputHeight : CVPixelBufferGetHeight(pixelBuffer)
         let attrs: [CFString: Any] = [
             kCVPixelBufferCGImageCompatibilityKey: true,
             kCVPixelBufferCGBitmapContextCompatibilityKey: true,
@@ -180,7 +187,10 @@ extension FlutterArkitView {
         // CIImage で変換
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let context = CIContext(options: [CIContextOption.useSoftwareRenderer: false])
-        context.render(ciImage, to: outBuffer)
+        // 必要ならサイズ変換
+        let scaled = ciImage.transformed(by: CGAffineTransform(scaleX: CGFloat(width) / ciImage.extent.width,
+                                                               y: CGFloat(height) / ciImage.extent.height))
+        context.render(scaled, to: outBuffer)
 
         _ = adaptor.append(outBuffer, withPresentationTime: frameTime)
     }
