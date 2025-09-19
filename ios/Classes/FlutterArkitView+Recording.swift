@@ -165,7 +165,7 @@ extension FlutterArkitView {
 
         // タイムスタンプ: 30fps相当の安定したPTS
         let timescale = recordingTimescale
-        let step = max(Int32(timescale / 30), 1)
+        let step = max(Int64(timescale / 30), 1)
         let frameDuration = CMTime(value: step, timescale: timescale)
         let frameTime = CMTimeMultiply(frameDuration, multiplier: Int32(recordingFrameIndex))
         recordingFrameIndex += 1
