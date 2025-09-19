@@ -37,6 +37,9 @@ extension FlutterArkitView {
         let targetHeight = (args?["height"] as? Int) ?? Int(cameraHeight)
         recordingOutputWidth = targetWidth
         recordingOutputHeight = targetHeight
+        
+        // Dartからの指定FPS（未指定時は30fps）
+        recordingFps = (args?["fps"] as? Int) ?? 30
 
         do {
             let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
@@ -109,6 +112,7 @@ extension FlutterArkitView {
             self.recordingStartTimeSeconds = nil
             self.recordingOutputURL = nil
             self.recordingFrameIndex = 0
+            self.recordingFps = 30
 
             guard let movURL else {
                 DispatchQueue.main.async { result(nil) }
@@ -163,9 +167,9 @@ extension FlutterArkitView {
         // ARコンテンツを含めない: capturedImage をそのままエンコード
         let pixelBuffer = frame.capturedImage
 
-        // タイムスタンプ: 30fps相当の安定したPTS
+        // タイムスタンプ: 指定されたfps相当の安定したPTS
         let timescale = recordingTimescale
-        let step = max(Int64(timescale / 30), 1)
+        let step = max(Int64(timescale / Int32(recordingFps)), 1)
         let frameDuration = CMTime(value: step, timescale: timescale)
         let frameTime = CMTimeMultiply(frameDuration, multiplier: Int32(recordingFrameIndex))
         recordingFrameIndex += 1
