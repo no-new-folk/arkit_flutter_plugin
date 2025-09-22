@@ -1,5 +1,6 @@
 import ARKit
 import AVFoundation
+import UIKit
 
 extension FlutterArkitView {
     func startRecording(_ args: [String: Any]?, _ result: @escaping FlutterResult) {
@@ -58,6 +59,14 @@ extension FlutterArkitView {
             ]
             let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
             input.expectsMediaDataInRealTime = true
+
+            // iPad の場合、出力トラックを右回転（時計回り 90 度）
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                var t = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+                // 原点周りの回転で負の座標に出ないように Y 方向へ幅分を平行移動
+                t = t.translatedBy(x: 0, y: CGFloat(targetWidth))
+                input.transform = t
+            }
 
             let sourcePixelBufferAttributes: [String: Any] = [
                 kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
@@ -191,10 +200,12 @@ extension FlutterArkitView {
         // CIImage で変換
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let context = CIContext(options: [CIContextOption.useSoftwareRenderer: false])
-        // 必要ならサイズ変換
-        let scaled = ciImage.transformed(by: CGAffineTransform(scaleX: CGFloat(width) / ciImage.extent.width,
-                                                               y: CGFloat(height) / ciImage.extent.height))
-        context.render(scaled, to: outBuffer)
+        
+        // 通常のスケール（iPad/iPhone共通）
+        let finalImage = ciImage.transformed(by: CGAffineTransform(scaleX: CGFloat(width) / ciImage.extent.width,
+                                                                   y: CGFloat(height) / ciImage.extent.height))
+        
+        context.render(finalImage, to: outBuffer)
 
         _ = adaptor.append(outBuffer, withPresentationTime: frameTime)
     }
