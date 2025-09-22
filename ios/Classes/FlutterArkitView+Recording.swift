@@ -60,12 +60,34 @@ extension FlutterArkitView {
             let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
             input.expectsMediaDataInRealTime = true
 
-            // iPad の場合、出力トラックを右回転（時計回り 90 度）
+            // iPad の場合、端末の向きに応じて出力トラックを回転
             if UIDevice.current.userInterfaceIdiom == .pad {
-                var t = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
-                // 原点周りの回転で負の座標に出ないように Y 方向へ幅分を平行移動
-                t = t.translatedBy(x: 0, y: CGFloat(targetWidth))
-                input.transform = t
+                let orientation = UIApplication.shared.statusBarOrientation
+                var transform = CGAffineTransform.identity
+                
+                switch orientation {
+                case .portrait:
+                    // Portrait: 90度時計回り回転
+                    transform = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+                    transform = transform.translatedBy(x: 0, y: CGFloat(targetWidth))
+                case .portraitUpsideDown:
+                    // Portrait Upside Down: 270度時計回り回転（-90度）
+                    transform = CGAffineTransform(rotationAngle: -CGFloat.pi / 2)
+                    transform = transform.translatedBy(x: CGFloat(targetHeight), y: 0)
+                case .landscapeLeft:
+                    // Landscape Left: 180度回転
+                    transform = CGAffineTransform(rotationAngle: CGFloat.pi)
+                    transform = transform.translatedBy(x: CGFloat(targetWidth), y: CGFloat(targetHeight))
+                case .landscapeRight:
+                    // Landscape Right: 回転なし
+                    transform = CGAffineTransform.identity
+                default:
+                    // Unknown: デフォルトでPortrait扱い
+                    transform = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
+                    transform = transform.translatedBy(x: 0, y: CGFloat(targetWidth))
+                }
+                
+                input.transform = transform
             }
 
             let sourcePixelBufferAttributes: [String: Any] = [
