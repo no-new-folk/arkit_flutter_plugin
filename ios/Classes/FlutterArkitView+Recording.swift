@@ -39,6 +39,9 @@ extension FlutterArkitView {
         
         // Dartからの指定FPS（未指定時は30fps）
         recordingFps = (args?["fps"] as? Int) ?? 30
+        
+        // Dartからの指定ビットレート（未指定時は1Mbps）
+        let bitrate = (args?["bitrate"] as? Int) ?? 1_000_000
 
         // 端末の向きを取得
         let orientation = UIApplication.shared.statusBarOrientation
@@ -56,7 +59,7 @@ extension FlutterArkitView {
             let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
             // より互換性の高い H.264 設定
             let compressionProps: [String: Any] = [
-                AVVideoAverageBitRateKey: NSNumber(value: 1_000_000), // 1Mbps
+                AVVideoAverageBitRateKey: NSNumber(value: bitrate),
                 AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel,
                 AVVideoAllowFrameReorderingKey: false,
                 AVVideoMaxKeyFrameIntervalKey: 30,
