@@ -230,9 +230,52 @@ extension FlutterArkitView {
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let context = CIContext(options: [CIContextOption.useSoftwareRenderer: false])
         
-        // 通常のスケール（iPad/iPhone共通）
-        let finalImage = ciImage.transformed(by: CGAffineTransform(scaleX: CGFloat(width) / ciImage.extent.width,
-                                                                   y: CGFloat(height) / ciImage.extent.height))
+        // アスペクト比を維持したまま中央クロップ
+        let sourceWidth = ciImage.extent.width
+        let sourceHeight = ciImage.extent.height
+        let targetWidth = CGFloat(width)
+        let targetHeight = CGFloat(height)
+        
+        // アスペクト比を計算
+        let sourceAspect = sourceWidth / sourceHeight
+        let targetAspect = targetWidth / targetHeight
+        
+        var finalImage: CIImage
+        
+        if abs(sourceAspect - targetAspect) < 0.01 {
+            // アスペクト比がほぼ同じ: 単純にスケール
+            finalImage = ciImage.transformed(by: CGAffineTransform(scaleX: targetWidth / sourceWidth,
+                                                                    y: targetHeight / sourceHeight))
+        } else {
+            // アスペクト比が異なる: アスペクト比を維持して中央クロップ
+            let scale: CGFloat
+            let cropX: CGFloat
+            let cropY: CGFloat
+            
+            if sourceAspect > targetAspect {
+                // ソースの方が横長: 高さに合わせてスケールし、横をクロップ
+                scale = targetHeight / sourceHeight
+                let scaledWidth = sourceWidth * scale
+                cropX = (scaledWidth - targetWidth) / 2.0
+                cropY = 0
+            } else {
+                // ソースの方が縦長: 幅に合わせてスケールし、縦をクロップ
+                scale = targetWidth / sourceWidth
+                let scaledHeight = sourceHeight * scale
+                cropX = 0
+                cropY = (scaledHeight - targetHeight) / 2.0
+            }
+            
+            // スケール変換
+            let scaledImage = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+            
+            // クロップ領域を指定
+            let cropRect = CGRect(x: cropX, y: cropY, width: targetWidth, height: targetHeight)
+            finalImage = scaledImage.cropped(to: cropRect)
+            
+            // クロップ後の座標をリセット（原点を0,0に）
+            finalImage = finalImage.transformed(by: CGAffineTransform(translationX: -cropX, y: -cropY))
+        }
         
         context.render(finalImage, to: outBuffer)
 
