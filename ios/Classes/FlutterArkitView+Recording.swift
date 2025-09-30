@@ -34,13 +34,23 @@ extension FlutterArkitView {
         let cameraHeight = CVPixelBufferGetHeight(pixelBuffer)
 
         // Dartからの指定サイズ（未指定時はカメラ原寸）
-        let targetWidth = (args?["height"] as? Int) ?? Int(cameraWidth)
-        let targetHeight = (args?["width"] as? Int) ?? Int(cameraHeight)
-        recordingOutputWidth = targetWidth
-        recordingOutputHeight = targetHeight
+        let requestedWidth = (args?["width"] as? Int) ?? Int(cameraWidth)
+        let requestedHeight = (args?["height"] as? Int) ?? Int(cameraHeight)
         
         // Dartからの指定FPS（未指定時は30fps）
         recordingFps = (args?["fps"] as? Int) ?? 30
+
+        // 端末の向きを取得
+        let orientation = UIApplication.shared.statusBarOrientation
+        let isPortrait = (orientation == .portrait || orientation == .portraitUpsideDown)
+        
+        // Portrait時は出力サイズを入れ替えて常に横長に（Landscape時はそのまま）
+        let videoWidth = isPortrait ? requestedHeight : requestedWidth
+        let videoHeight = isPortrait ? requestedWidth : requestedHeight
+        
+        // PixelBuffer生成用（常に横長）
+        recordingOutputWidth = videoWidth
+        recordingOutputHeight = videoHeight
 
         do {
             let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
@@ -53,45 +63,44 @@ extension FlutterArkitView {
             ]
             let settings: [String: Any] = [
                 AVVideoCodecKey: AVVideoCodecType.h264,
-                AVVideoWidthKey: targetWidth,
-                AVVideoHeightKey: targetHeight,
+                AVVideoWidthKey: videoWidth,
+                AVVideoHeightKey: videoHeight,
                 AVVideoCompressionPropertiesKey: compressionProps,
             ]
             let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
             input.expectsMediaDataInRealTime = true
 
             // 端末の向きに応じて出力トラックを回転（iPad/iPhone共通）
-            let orientation = UIApplication.shared.statusBarOrientation
             var transform = CGAffineTransform.identity
             
             switch orientation {
             case .portrait:
                 // Portrait: 90度時計回り回転
                 transform = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
-                transform = transform.translatedBy(x: 0, y: CGFloat(targetWidth))
+                transform = transform.translatedBy(x: 0, y: -CGFloat(videoHeight))
             case .portraitUpsideDown:
                 // Portrait Upside Down: 270度時計回り回転（-90度）
                 transform = CGAffineTransform(rotationAngle: -CGFloat.pi / 2)
-                transform = transform.translatedBy(x: CGFloat(targetHeight), y: 0)
+                transform = transform.translatedBy(x: -CGFloat(videoWidth), y: 0)
             case .landscapeLeft:
                 // Landscape Left: 180度回転
                 transform = CGAffineTransform(rotationAngle: CGFloat.pi)
-                transform = transform.translatedBy(x: CGFloat(targetWidth), y: CGFloat(targetHeight))
+                transform = transform.translatedBy(x: -CGFloat(videoWidth), y: -CGFloat(videoHeight))
             case .landscapeRight:
                 // Landscape Right: 回転なし
                 transform = CGAffineTransform.identity
             default:
                 // Unknown: デフォルトでPortrait扱い
                 transform = CGAffineTransform(rotationAngle: CGFloat.pi / 2)
-                transform = transform.translatedBy(x: 0, y: CGFloat(targetWidth))
+                transform = transform.translatedBy(x: 0, y: -CGFloat(videoHeight))
             }
             
             input.transform = transform
 
             let sourcePixelBufferAttributes: [String: Any] = [
                 kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
-                kCVPixelBufferWidthKey as String: targetWidth,
-                kCVPixelBufferHeightKey as String: targetHeight,
+                kCVPixelBufferWidthKey as String: videoWidth,
+                kCVPixelBufferHeightKey as String: videoHeight,
                 kCVPixelBufferIOSurfacePropertiesKey as String: [:],
             ]
             let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: sourcePixelBufferAttributes)
