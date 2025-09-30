@@ -34,8 +34,8 @@ extension FlutterArkitView {
         let cameraHeight = CVPixelBufferGetHeight(pixelBuffer)
 
         // Dartからの指定サイズ（未指定時はカメラ原寸）
-        let targetWidth = (args?["width"] as? Int) ?? Int(cameraWidth)
-        let targetHeight = (args?["height"] as? Int) ?? Int(cameraHeight)
+        let targetWidth = (args?["height"] as? Int) ?? Int(cameraWidth)
+        let targetHeight = (args?["width"] as? Int) ?? Int(cameraHeight)
         recordingOutputWidth = targetWidth
         recordingOutputHeight = targetHeight
         
@@ -46,7 +46,7 @@ extension FlutterArkitView {
             let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
             // より互換性の高い H.264 設定
             let compressionProps: [String: Any] = [
-                AVVideoAverageBitRateKey: NSNumber(value: 4_000_000), // 4Mbps
+                AVVideoAverageBitRateKey: NSNumber(value: 1_000_000), // 1Mbps
                 AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel,
                 AVVideoAllowFrameReorderingKey: false,
                 AVVideoMaxKeyFrameIntervalKey: 30,
