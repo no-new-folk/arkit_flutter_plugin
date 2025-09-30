@@ -121,6 +121,7 @@ extension FlutterArkitView {
                 recordingAdaptor = adaptor
                 recordingOutputURL = outputURL
                 recordingFrameIndex = 0
+                recordingLastFrameTime = nil
                 isRecording = true
                 result(true)
             } else {
@@ -154,6 +155,7 @@ extension FlutterArkitView {
             self.recordingOutputURL = nil
             self.recordingFrameIndex = 0
             self.recordingFps = 30
+            self.recordingLastFrameTime = nil
 
             guard let movURL else {
                 DispatchQueue.main.async { result(nil) }
@@ -204,6 +206,19 @@ extension FlutterArkitView {
               input.isReadyForMoreMediaData,
               let frame = sceneView.session.currentFrame
         else { return }
+
+        // フレームスキップ: 指定されたfpsに合わせてフレームを間引く
+        let frameInterval = 1.0 / Double(recordingFps)
+        if let lastTime = recordingLastFrameTime {
+            let elapsed = currentTime - lastTime
+            if elapsed < frameInterval {
+                // まだ次のフレームを記録するタイミングではない
+                return
+            }
+        }
+        
+        // このフレームを記録
+        recordingLastFrameTime = currentTime
 
         // ARコンテンツを含めない: capturedImage をそのままエンコード
         let pixelBuffer = frame.capturedImage
