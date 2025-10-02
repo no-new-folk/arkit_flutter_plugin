@@ -115,7 +115,7 @@ extension FlutterArkitView {
             if writer.startWriting() {
                 // セッションは 0 から開始（以後のフレームは相対時間で投入）
                 writer.startSession(atSourceTime: .zero)
-                recordingStartTimeSeconds = 0
+                recordingStartTimeSeconds = nil // 最初のフレームで初期化される
                 recordingWriter = writer
                 recordingInput = input
                 recordingAdaptor = adaptor
@@ -207,6 +207,11 @@ extension FlutterArkitView {
               let frame = sceneView.session.currentFrame
         else { return }
 
+        // 開始時刻の初期化（最初のフレーム）
+        if recordingStartTimeSeconds == nil {
+            recordingStartTimeSeconds = currentTime
+        }
+        
         // フレームスキップ: 指定されたfpsに合わせてフレームを間引く
         let frameInterval = 1.0 / Double(recordingFps)
         if let lastTime = recordingLastFrameTime {
@@ -223,11 +228,10 @@ extension FlutterArkitView {
         // ARコンテンツを含めない: capturedImage をそのままエンコード
         let pixelBuffer = frame.capturedImage
 
-        // タイムスタンプ: 指定されたfps相当の安定したPTS
+        // タイムスタンプ: 実際の経過時間を使用してPTSを生成
+        let elapsedTime = currentTime - (recordingStartTimeSeconds ?? 0)
         let timescale = recordingTimescale
-        let step = max(Int64(timescale / Int32(recordingFps)), 1)
-        let frameDuration = CMTime(value: step, timescale: timescale)
-        let frameTime = CMTimeMultiply(frameDuration, multiplier: Int32(recordingFrameIndex))
+        let frameTime = CMTime(seconds: elapsedTime, preferredTimescale: timescale)
         recordingFrameIndex += 1
 
         // capturedImage は YpCbCr なので、RGB に変換が必要。
