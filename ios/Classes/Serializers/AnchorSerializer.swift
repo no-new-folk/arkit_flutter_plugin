@@ -69,30 +69,31 @@ private func serializeBodyAnchor(_ anchor: ARBodyAnchor, _ params: [String: Any]
     params["anchorType"] = "bodyAnchor"
     params["isTracked"] = anchor.isTracked
 
-    let modelTransforms = [
-        "root": serializeMatrix(anchor.skeleton.modelTransform(for: .root) ?? simd_float4x4.init()),
-        "head": serializeMatrix(anchor.skeleton.modelTransform(for: .head) ?? simd_float4x4.init()),
-        "leftHand": serializeMatrix(anchor.skeleton.modelTransform(for: .leftHand) ?? simd_float4x4.init()),
-        "rightHand": serializeMatrix(anchor.skeleton.modelTransform(for: .rightHand) ?? simd_float4x4.init()),
-        "leftFoot": serializeMatrix(anchor.skeleton.modelTransform(for: .leftFoot) ?? simd_float4x4.init()),
-        "rightFoot": serializeMatrix(anchor.skeleton.modelTransform(for: .rightFoot) ?? simd_float4x4.init()),
-        "leftShoulder": serializeMatrix(anchor.skeleton.modelTransform(for: .leftShoulder) ?? simd_float4x4.init()),
-        "rightShoulder": serializeMatrix(anchor.skeleton.modelTransform(for: .rightShoulder) ?? simd_float4x4.init()),
-    ]
-    let localTransforms = [
-        "root": serializeMatrix(anchor.skeleton.localTransform(for: .root) ?? simd_float4x4.init()),
-        "head": serializeMatrix(anchor.skeleton.localTransform(for: .head) ?? simd_float4x4.init()),
-        "leftHand": serializeMatrix(anchor.skeleton.localTransform(for: .leftHand) ?? simd_float4x4.init()),
-        "rightHand": serializeMatrix(anchor.skeleton.localTransform(for: .rightHand) ?? simd_float4x4.init()),
-        "leftFoot": serializeMatrix(anchor.skeleton.localTransform(for: .leftFoot) ?? simd_float4x4.init()),
-        "rightFoot": serializeMatrix(anchor.skeleton.localTransform(for: .rightFoot) ?? simd_float4x4.init()),
-        "leftShoulder": serializeMatrix(anchor.skeleton.localTransform(for: .leftShoulder) ?? simd_float4x4.init()),
-        "rightShoulder": serializeMatrix(anchor.skeleton.localTransform(for: .rightShoulder) ?? simd_float4x4.init()),
-    ]
-    let skeleton = [
+    // Serialize all joints dynamically
+    var modelTransforms: [String: Any] = [:]
+    var localTransforms: [String: Any] = [:]
+
+    let skeleton = anchor.skeleton
+    let definition = skeleton.definition
+
+    // Iterate through all joint names in the skeleton definition
+    for jointName in definition.jointNames {
+        let jointNameString = jointName.rawValue
+
+        // Get transforms for this joint
+        if let modelTransform = skeleton.modelTransform(for: jointName) {
+            modelTransforms[jointNameString] = serializeMatrix(modelTransform)
+        }
+
+        if let localTransform = skeleton.localTransform(for: jointName) {
+            localTransforms[jointNameString] = serializeMatrix(localTransform)
+        }
+    }
+
+    let skeletonData = [
         "modelTransforms": modelTransforms,
         "localTransforms": localTransforms,
     ]
-    params["skeleton"] = skeleton
+    params["skeleton"] = skeletonData
     return params
 }
