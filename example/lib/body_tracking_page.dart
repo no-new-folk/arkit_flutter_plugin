@@ -9,7 +9,23 @@ class BodyTrackingPage extends StatefulWidget {
 
 class _BodyTrackingPageState extends State<BodyTrackingPage> {
   late ARKitController arkitController;
-  ARKitNode? hand;
+  final Map<ARKitSkeletonJointName, ARKitNode> jointNodes = {};
+
+  // Define joints to track
+  final List<ARKitSkeletonJointName> jointsToTrack = [
+    ARKitSkeletonJointName.head,
+    ARKitSkeletonJointName.leftHand,
+    ARKitSkeletonJointName.rightHand,
+    ARKitSkeletonJointName.leftFoot,
+    ARKitSkeletonJointName.rightFoot,
+    ARKitSkeletonJointName.leftShoulder,
+    ARKitSkeletonJointName.rightShoulder,
+    ARKitSkeletonJointName.leftArm,
+    ARKitSkeletonJointName.rightArm,
+    ARKitSkeletonJointName.leftForearm,
+    ARKitSkeletonJointName.rightForearm,
+    ARKitSkeletonJointName.spine5,
+  ];
 
   @override
   void dispose() {
@@ -33,13 +49,19 @@ class _BodyTrackingPageState extends State<BodyTrackingPage> {
   }
 
   void _handleAddAnchor(ARKitAnchor anchor) {
-    if (!(anchor is ARKitBodyAnchor)) {
+    if (anchor is! ARKitBodyAnchor) {
       return;
     }
-    final transform =
-        anchor.skeleton.modelTransformsFor(ARKitSkeletonJointName.leftHand);
-    hand = _createSphere(transform!);
-    arkitController.add(hand!, parentNodeName: anchor.nodeName);
+
+    // Create nodes for all tracked joints
+    for (final joint in jointsToTrack) {
+      final transform = anchor.skeleton.modelTransformsFor(joint);
+      if (transform != null) {
+        final node = _createSphere(transform);
+        jointNodes[joint] = node;
+        arkitController.add(node, parentNodeName: anchor.nodeName);
+      }
+    }
   }
 
   ARKitNode _createSphere(Matrix4 transform) {
@@ -57,14 +79,18 @@ class _BodyTrackingPageState extends State<BodyTrackingPage> {
 
   void _handleUpdateAnchor(ARKitAnchor anchor) {
     if (anchor is ARKitBodyAnchor && mounted) {
-      final transform =
-          anchor.skeleton.modelTransformsFor(ARKitSkeletonJointName.leftHand)!;
-      final position = vector.Vector3(
-        transform.getColumn(3).x,
-        transform.getColumn(3).y,
-        transform.getColumn(3).z,
-      );
-      hand?.position = position;
+      // Update all tracked joint positions
+      for (final joint in jointsToTrack) {
+        final transform = anchor.skeleton.modelTransformsFor(joint);
+        if (transform != null && jointNodes.containsKey(joint)) {
+          final position = vector.Vector3(
+            transform.getColumn(3).x,
+            transform.getColumn(3).y,
+            transform.getColumn(3).z,
+          );
+          jointNodes[joint]?.position = position;
+        }
+      }
     }
   }
 }
